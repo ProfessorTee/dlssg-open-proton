@@ -1,45 +1,47 @@
 # dlssg-open Proton
 
-**Kleines KDE-Tool, das eine installierte Proton-Version kopiert und in die Kopie
-[dlssg-open](https://github.com/dniminenn/dlssg-open) einbaut.** Damit läuft DLSS Frame Generation
-auf RTX-30-Karten (Ampere) unter Linux. Die Original-Proton-Version bleibt unverändert, Steam zeigt die
-Kopie als eigenes Kompatibilitätstool an, z. B. „GE-Proton11-11 (dlssg-open v0.1.0)“. So bekommen nur
-die Spiele den Mod, bei denen du die Kopie auswählst.
+**English** · [Deutsch](README.de.md)
 
-## Bedienung
+**Small KDE tool that copies an installed Proton build and installs
+[dlssg-open](https://github.com/dniminenn/dlssg-open) into the copy.** This gets DLSS Frame Generation
+running on RTX 30 cards (Ampere) on Linux. The original Proton build stays untouched; Steam lists the copy
+as a separate compatibility tool, e.g. "GE-Proton11-11 (dlssg-open v0.1.0)". So only the games you switch
+to the copy get the mod.
 
-1. Im Startmenü **dlssg-open Proton erstellen** öffnen (oder `dlssg-open-proton` im Terminal).
-2. Die Proton-Version auswählen, die den Mod bekommen soll.
-3. Steam neu starten, im Spiel unter *Eigenschaften → Kompatibilität* die neue Version wählen.
-4. In die Startoptionen des Spiels:
+## Usage
+
+1. Open **dlssg-open Proton erstellen** from the start menu (or run `dlssg-open-proton` in a terminal).
+2. Pick the Proton build that should get the mod.
+3. Restart Steam, then select the new build in the game under *Properties → Compatibility*.
+4. Add to the game's launch options:
 
    ```
    DXVK_NVAPI_GPU_ARCH=AD100 NVCUDA_LITE_CC=8.9 DXVK_NVAPI_CUBIN_RETARGET_SM=86 %command%
    ```
 
-   `PROTON_NVIDIA_LIBS` und `PROTON_NVIDIA_NVCUDA` **nicht** setzen, sonst wird das echte nvcuda
-   statt nvcuda-lite geladen.
+   Do **not** set `PROTON_NVIDIA_LIBS` or `PROTON_NVIDIA_NVCUDA`, otherwise the real nvcuda is loaded
+   instead of nvcuda-lite.
 
-Rechtsklick auf den Startmenü-Eintrag → *Proton-Ordner öffnen* zeigt `compatibilitytools.d`, um alte
-Kopien zu löschen.
+Right-click the start menu entry → *Proton-Ordner öffnen* opens `compatibilitytools.d` so you can delete old
+copies. The dialogs are in German.
 
-## Was das Skript macht
+## What the script does
 
-- Listet alle installierten Proton-Builds mit dxvk-nvapi (Steam-Proton, systemweite und eigene in
-  `compatibilitytools.d`), eigene dlssg-open-Kopien ausgenommen.
-- Lädt das **neueste Release** von dlssg-open über die GitHub-API, prüft die `SHA256SUMS` und
-  speichert es in `~/.cache/dlssg-open/<tag>`.
-- Kopiert die gewählte Proton-Version nach `compatibilitytools.d/<name>-dlssg-open-<tag>`
-  (mit `--reflink`, auf btrfs also fast ohne Platz), legt eine eigene `compatibilitytool.vdf` an und
-  führt den Installer von dlssg-open auf der Kopie aus. Schlägt das fehl, wird die Kopie wieder gelöscht.
+- Lists every installed Proton build with dxvk-nvapi (Steam's Proton, system-wide ones and your own in
+  `compatibilitytools.d`), excluding its own dlssg-open copies.
+- Downloads the **newest release** of dlssg-open via the GitHub API, checks its `SHA256SUMS` and keeps it in
+  `~/.cache/dlssg-open/<tag>`.
+- Copies the chosen Proton build to `compatibilitytools.d/<name>-dlssg-open-<tag>` (with `--reflink`, so on
+  btrfs it takes almost no space), writes its own `compatibilitytool.vdf` and runs the dlssg-open installer on
+  the copy. If that fails, the copy is deleted again.
 
-Kommt ein neues dlssg-open- oder Proton-Release, das Tool einfach nochmal ausführen.
+When a new dlssg-open or Proton release comes out, just run the tool again.
 
-## Voraussetzungen
+## Requirements
 
-- Steam (nativ, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `python3`
-- RTX 30 und ein Spiel mit DLSS-G-Runtime 310.x – Details und Grenzen im
-  [dlssg-open-README](https://github.com/dniminenn/dlssg-open#readme)
+- Steam (native, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `python3`
+- RTX 30 and a game with DLSS-G runtime 310.x – details and limits in the
+  [dlssg-open README](https://github.com/dniminenn/dlssg-open#readme)
 
 ## Installation
 
@@ -49,10 +51,10 @@ cd dlssg-open-proton
 ./install.sh
 ```
 
-Deinstallieren: `~/.local/bin/dlssg-open-proton` und
-`~/.local/share/applications/dlssg-open-proton.desktop` löschen.
+Uninstall: delete `~/.local/bin/dlssg-open-proton` and
+`~/.local/share/applications/dlssg-open-proton.desktop`.
 
-## Lizenz
+## License
 
-MIT. dlssg-open selbst ist ein eigenes Projekt von dniminenn (ebenfalls MIT) und wird zur Laufzeit von
-dessen GitHub-Releases geladen, nicht mit diesem Repo verteilt.
+MIT. dlssg-open itself is a separate project by dniminenn (also MIT) and is downloaded from its GitHub
+releases at runtime, not distributed with this repo.
