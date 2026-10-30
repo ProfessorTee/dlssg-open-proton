@@ -10,7 +10,7 @@ to the copy get the mod.
 
 ## Usage
 
-1. Open **dlssg-open Proton erstellen** from the start menu (or run `dlssg-open-proton` in a terminal).
+1. Open **Create dlssg-open Proton** from the start menu (or run `dlssg-open-proton` in a terminal).
 2. Pick the Proton build that should get the mod.
 3. Restart Steam, then select the new build in the game under *Properties → Compatibility*.
 4. Add to the game's launch options:
@@ -22,8 +22,8 @@ to the copy get the mod.
    Do **not** set `PROTON_NVIDIA_LIBS` or `PROTON_NVIDIA_NVCUDA`, otherwise the real nvcuda is loaded
    instead of nvcuda-lite.
 
-Right-click the start menu entry → *Proton-Ordner öffnen* opens `compatibilitytools.d` so you can delete old
-copies. The dialogs are in German.
+Right-click the start menu entry → *Open Proton folder* opens `compatibilitytools.d` so you can delete old
+copies. The interface follows the system language: German on German systems, English otherwise.
 
 ## What the script does
 

@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=dlssg-open Proton erstellen
-Comment=Proton-Kopie mit DLSS Frame Generation (RTX 30) anlegen
+Name=Create dlssg-open Proton
+Name[de]=dlssg-open Proton erstellen
+Comment=Create a Proton copy with DLSS Frame Generation (RTX 30)
+Comment[de]=Proton-Kopie mit DLSS Frame Generation (RTX 30) anlegen
 Exec=dlssg-open-proton
 Icon=steam
 Terminal=false
@@ -9,5 +11,6 @@ Categories=Game;
 Actions=folder;
 
 [Desktop Action folder]
-Name=Proton-Ordner öffnen
+Name=Open Proton folder
+Name[de]=Proton-Ordner öffnen
 Exec=dlssg-open-proton --folder

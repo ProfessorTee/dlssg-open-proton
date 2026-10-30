@@ -23,7 +23,7 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
    statt nvcuda-lite geladen.
 
 Rechtsklick auf den Startmenü-Eintrag → *Proton-Ordner öffnen* zeigt `compatibilitytools.d`, um alte
-Kopien zu löschen.
+Kopien zu löschen. Die Oberfläche folgt der Systemsprache: Deutsch auf deutschen Systemen, sonst Englisch.
 
 ## Was das Skript macht
 
