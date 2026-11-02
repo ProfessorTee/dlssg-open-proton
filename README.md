@@ -16,7 +16,8 @@ to the copy get the mod.
 
 ## Usage
 
-1. Open **Create dlssg-open Proton** from the start menu (or run `dlssg-open-proton` in a terminal).
+1. Open **Create dlssg-open Proton** from the start menu (or run `dlssg-open-proton` in a terminal) and choose
+   *Create a Proton copy with dlssg-open*.
 2. Pick the Proton build that should get the mod.
 3. Restart Steam, then select the new build in the game under *Properties → Compatibility*.
 4. Add to the game's launch options:
@@ -40,6 +41,23 @@ to the copy get the mod.
 
 Right-click the start menu entry → *Open Proton folder* opens `compatibilitytools.d` so you can delete old
 copies. The interface follows the system language: German on German systems, English otherwise.
+
+## dlssg_for_sm86 into a game
+
+The second menu entry (also *right-click the start menu entry → Install / update dlssg_for_sm86 in a game*, or
+`dlssg-open-proton --game`) puts the newest [dlssg_for_sm86](https://github.com/sdli1995/dlssg_for_sm86) release
+next to a game's EXE, or updates it there:
+
+- Lists the installed Steam games that ship DLSS Frame Generation and finds their main EXE; *Other EXE …* or
+  *Choose an EXE myself …* opens a file dialog, so non-Steam games work too.
+- Downloads the release once (checked against GitHub's SHA-256), keeps it in `~/.cache/dlssg-open/`.
+- Copies the proxy, `dlssg_sm86.ini` and `dlssg_sm86\` next to the EXE. The proxy is `version.dll`; if another mod
+  already uses that name, the next free one of `winmm.dll`, `dbghelp.dll`, `dinput8.dll` (the order the mod's
+  `alternatives\README.md` gives). Only one proxy of the mod stays in the folder.
+- Update: old proxies of the mod are removed, the old INI is kept as `dlssg_sm86.ini.bak` (redo your edits in the
+  new one). If the mod is loaded as an ASI plugin (e.g. `00_dlssg_sm86.asi` next to an ASI loader), that file is
+  updated in place.
+- Shows the launch options to use, including the `WINEDLLOVERRIDES` for the chosen proxy.
 
 ## What the tool does
 

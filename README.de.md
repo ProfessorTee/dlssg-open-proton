@@ -16,7 +16,8 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
 
 ## Bedienung
 
-1. Im Startmenü **dlssg-open Proton erstellen** öffnen (oder `dlssg-open-proton` im Terminal).
+1. Im Startmenü **dlssg-open Proton erstellen** öffnen (oder `dlssg-open-proton` im Terminal) und
+   *Proton-Kopie mit dlssg-open erstellen* wählen.
 2. Die Proton-Version auswählen, die den Mod bekommen soll.
 3. Steam neu starten, im Spiel unter *Eigenschaften → Kompatibilität* die neue Version wählen.
 4. In die Startoptionen des Spiels:
@@ -40,6 +41,24 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
 
 Rechtsklick auf den Startmenü-Eintrag → *Proton-Ordner öffnen* zeigt `compatibilitytools.d`, um alte
 Kopien zu löschen. Die Oberfläche folgt der Systemsprache: Deutsch auf deutschen Systemen, sonst Englisch.
+
+## dlssg_for_sm86 in ein Spiel
+
+Der zweite Menüpunkt (auch *Rechtsklick auf den Startmenü-Eintrag → dlssg_for_sm86 in ein Spiel installieren /
+aktualisieren* oder `dlssg-open-proton --game`) legt das neueste
+[dlssg_for_sm86](https://github.com/sdli1995/dlssg_for_sm86)-Release neben die EXE eines Spiels oder
+aktualisiert es dort:
+
+- Listet die installierten Steam-Spiele mit DLSS Frame Generation und findet ihre Haupt-EXE; *Andere EXE …*
+  oder *EXE selbst auswählen …* öffnet eine Dateiauswahl, damit gehen auch Spiele außerhalb von Steam.
+- Lädt das Release einmal (geprüft gegen GitHubs SHA-256) und speichert es in `~/.cache/dlssg-open/`.
+- Kopiert Proxy, `dlssg_sm86.ini` und `dlssg_sm86\` neben die EXE. Der Proxy ist `version.dll`; belegt ein
+  anderer Mod den Namen schon, der nächste freie aus `winmm.dll`, `dbghelp.dll`, `dinput8.dll` (Reihenfolge laut
+  `alternatives\README.md` des Mods). Es bleibt immer nur ein Proxy des Mods im Ordner.
+- Update: alte Proxys des Mods werden entfernt, die alte INI bleibt als `dlssg_sm86.ini.bak` (eigene Änderungen
+  in der neuen nachtragen). Wird der Mod als ASI-Plugin geladen (z. B. `00_dlssg_sm86.asi` neben einem
+  ASI-Loader), wird diese Datei direkt aktualisiert.
+- Zeigt die passenden Startoptionen an, inklusive `WINEDLLOVERRIDES` für den gewählten Proxy.
 
 ## Was das Tool macht
 

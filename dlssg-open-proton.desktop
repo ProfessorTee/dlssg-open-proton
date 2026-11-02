@@ -8,7 +8,12 @@ Exec=dlssg-open-proton
 Icon=steam
 Terminal=false
 Categories=Game;
-Actions=folder;
+Actions=game;folder;
+
+[Desktop Action game]
+Name=Install / update dlssg_for_sm86 in a game
+Name[de]=dlssg_for_sm86 in ein Spiel installieren / aktualisieren
+Exec=dlssg-open-proton --game
 
 [Desktop Action folder]
 Name=Open Proton folder

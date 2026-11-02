@@ -12,6 +12,10 @@ use std::process::{exit, Command, Stdio};
 // Fork of dniminenn/dlssg-open with the CUDA module API needed by dlssg_for_sm86 0.4.x
 // (upstream PR: https://github.com/dniminenn/dlssg-open/pull/1). Back to upstream once that is released.
 const REPO: &str = "ProfessorTee/dlssg-open";
+const SM86_REPO: &str = "sdli1995/dlssg_for_sm86";
+/// Proxy names dlssg_for_sm86 ships, in the order its alternatives/README says to try them.
+/// dxgi.dll / d3d12.dll are left out: render-path proxies, often taken by ReShade & co.
+const PROXIES: [&str; 4] = ["version", "winmm", "dbghelp", "dinput8"];
 const TITLE: &str = "dlssg-open Proton";
 const LAUNCH: &str = "DXVK_NVAPI_GPU_ARCH=AD100 NVCUDA_LITE_CC=8.9 DXVK_NVAPI_CUBIN_RETARGET_SM=86";
 // With dlssg_for_sm86 (sdli1995) in the game folder: no arch spoof, the mod handles that
@@ -72,23 +76,28 @@ fn proton_builds(steam: &Path, dest: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// Newest release: (tag, .tar.gz asset URL).
-fn latest_release() -> (String, String) {
+/// Newest release of `repo`: (tag, URL and sha256 digest of the first asset whose name ends with `suffix`).
+fn latest_release(repo: &str, suffix: &str) -> (String, String, Option<String>) {
     let out = Command::new("curl")
-        .args(["-fsSL", &format!("https://api.github.com/repos/{REPO}/releases/latest")])
+        .args(["-fsSL", &format!("https://api.github.com/repos/{repo}/releases/latest")])
         .output()
         .ok()
         .filter(|o| o.status.success())
         .unwrap_or_else(|| fail(&t("GitHub nicht erreichbar.", "GitHub not reachable.")));
     let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| fail("GitHub: invalid JSON"));
     let tag = json["tag_name"].as_str().unwrap_or_else(|| fail("GitHub: no tag_name")).to_string();
-    let url = json["assets"]
+    let asset = json["assets"]
         .as_array()
-        .and_then(|a| a.iter().find(|a| a["name"].as_str().is_some_and(|n| n.ends_with(".tar.gz"))))
-        .and_then(|a| a["browser_download_url"].as_str())
-        .unwrap_or_else(|| fail(&format!("{tag}: no .tar.gz asset")))
-        .to_string();
-    (tag, url)
+        .and_then(|a| a.iter().find(|a| a["name"].as_str().is_some_and(|n| n.ends_with(suffix))))
+        .unwrap_or_else(|| fail(&format!("{repo} {tag}: no {suffix} asset")));
+    let url = asset["browser_download_url"].as_str().unwrap_or_else(|| fail("GitHub: no download URL")).to_string();
+    let digest = asset["digest"].as_str().and_then(|d| d.strip_prefix("sha256:")).map(str::to_string);
+    (tag, url, digest)
+}
+
+fn sha256(file: &Path) -> Option<String> {
+    let out = Command::new("sha256sum").arg(file).output().ok()?;
+    String::from_utf8_lossy(&out.stdout).split_whitespace().next().map(str::to_string)
 }
 
 /// Downloads + verifies the release into the cache once; returns the directory holding the DLLs.
@@ -150,9 +159,21 @@ fn main() {
     let dest = steam.join("compatibilitytools.d");
     let cache = home().join(".cache/dlssg-open");
 
-    if env::args().nth(1).as_deref() == Some("--folder") {
-        let _ = Command::new("xdg-open").arg(&dest).status();
-        return;
+    match env::args().nth(1).as_deref() {
+        Some("--folder") => {
+            let _ = Command::new("xdg-open").arg(&dest).status();
+            return;
+        }
+        Some("--game") => return install_sm86(&steam, &cache),
+        Some("--proton") => {}
+        _ => {
+            let (a, b) = (t("Proton-Kopie mit dlssg-open erstellen", "Create a Proton copy with dlssg-open"), t("dlssg_for_sm86 in ein Spiel installieren / aktualisieren", "Install / update dlssg_for_sm86 in a game"));
+            match kdialog(&["--menu", &t("Was soll gemacht werden?", "What do you want to do?"), "proton", &a, "game", &b]).as_deref() {
+                Some("game") => return install_sm86(&steam, &cache),
+                Some("proton") => {}
+                _ => return,
+            }
+        }
     }
 
     let builds = proton_builds(&steam, &dest);
@@ -172,7 +193,7 @@ fn main() {
     let src = PathBuf::from(src);
     let src_name = src.file_name().unwrap_or_default().to_string_lossy().to_string();
 
-    let (tag, url) = latest_release();
+    let (tag, url, _) = latest_release(REPO, ".tar.gz");
     let payload = fetch(&cache, &tag, &url);
 
     let name = format!("{src_name}-dlssg-open-{tag}");
@@ -230,5 +251,266 @@ mod tests {
         assert_eq!(fs::read_to_string(&bak).unwrap(), "proton");
         assert_eq!(fs::read_to_string(&dst).unwrap(), "ours2");
         fs::remove_dir_all(&d).unwrap();
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// dlssg_for_sm86 (sdli1995) into a game folder
+
+/// Steam library roots from libraryfolders.vdf (plus the default one).
+fn steam_libraries(steam: &Path) -> Vec<PathBuf> {
+    let mut libs = vec![steam.to_path_buf()];
+    if let Ok(vdf) = fs::read_to_string(steam.join("steamapps/libraryfolders.vdf")) {
+        for line in vdf.lines() {
+            let f: Vec<&str> = line.split('"').collect();
+            if f.len() >= 4 && f[1] == "path" {
+                let p = PathBuf::from(f[3].replace("\\\\", "\\"));
+                if !libs.iter().any(|l| fs::canonicalize(l).ok() == fs::canonicalize(&p).ok()) {
+                    libs.push(p);
+                }
+            }
+        }
+    }
+    libs
+}
+
+/// Value of `"key"  "value"` in a Steam .acf / .vdf text.
+fn vdf_value(text: &str, key: &str) -> Option<String> {
+    text.lines().find_map(|l| {
+        let f: Vec<&str> = l.split('"').collect();
+        (f.len() >= 4 && f[1] == key).then(|| f[3].to_string())
+    })
+}
+
+/// Files below `dir` (at most `depth` levels) for which `keep` is true.
+fn walk(dir: &Path, depth: usize, keep: &dyn Fn(&Path) -> bool, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let p = e.path();
+        let Ok(ft) = e.file_type() else { continue };
+        if ft.is_dir() {
+            // our own payload carries an nvngx_dlssg.dll too
+            if depth > 0 && p.file_name().is_none_or(|n| n != "dlssg_sm86") {
+                walk(&p, depth - 1, keep, out);
+            }
+        } else if keep(&p) {
+            out.push(p);
+        }
+    }
+}
+
+fn name_is(p: &Path, name: &str) -> bool {
+    p.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(name))
+}
+
+/// Installed Steam games that ship DLSS frame generation: (app id, name, install dir).
+fn fg_games(steam: &Path) -> Vec<(String, String, PathBuf)> {
+    let mut games = Vec::new();
+    for lib in steam_libraries(steam) {
+        let Ok(rd) = fs::read_dir(lib.join("steamapps")) else { continue };
+        for e in rd.flatten() {
+            let file = e.file_name().to_string_lossy().to_string();
+            let Some(id) = file.strip_prefix("appmanifest_").and_then(|f| f.strip_suffix(".acf")) else { continue };
+            let Ok(acf) = fs::read_to_string(e.path()) else { continue };
+            let (Some(name), Some(dir)) = (vdf_value(&acf, "name"), vdf_value(&acf, "installdir")) else { continue };
+            let dir = lib.join("steamapps/common").join(dir);
+            let mut hits = Vec::new();
+            walk(&dir, 9, &|p| name_is(p, "nvngx_dlssg.dll") || name_is(p, "sl.dlss_g.dll"), &mut hits);
+            if !hits.is_empty() {
+                games.push((id.to_string(), name, dir));
+            }
+        }
+    }
+    games.sort_by_key(|g| g.1.to_lowercase());
+    games
+}
+
+/// The game's main EXE: the largest .exe that is not a crash handler, launcher stub, installer etc.
+fn main_exe(game: &Path) -> Option<PathBuf> {
+    const SKIP: [&str; 9] = ["crash", "unins", "redist", "setup", "eac", "anticheat", "report", "helper", "launcher"];
+    // folders that hold side programs or the user's own copies, never the game EXE
+    const SKIP_DIRS: [&str; 7] = ["epiconlineservices", "easyanticheat", "battleye", "redist", "/engine/", "_bak", "backup"];
+    let mut exes = Vec::new();
+    walk(game, 6, &|p| {
+        let n = p.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+        let rel = p.strip_prefix(game).unwrap_or(p).parent().map(|d| format!("/{}/", d.to_string_lossy().to_lowercase())).unwrap_or_default();
+        n.ends_with(".exe") && !SKIP.iter().any(|s| n.contains(s)) && !SKIP_DIRS.iter().any(|s| rel.contains(s))
+    }, &mut exes);
+    exes.into_iter().max_by_key(|p| p.metadata().map(|m| m.len()).unwrap_or(0))
+}
+
+fn pick_exe(start: &Path) -> Option<PathBuf> {
+    let filter = t("Spiel-EXE (*.exe *.EXE)", "Game EXE (*.exe *.EXE)");
+    kdialog(&["--getopenfilename", &start.to_string_lossy(), &filter]).filter(|f| !f.is_empty()).map(PathBuf::from)
+}
+
+/// A proxy DLL of this mod (any name, 0.3.x and 0.4.x): they all carry "dlssg_sm86" as plain ASCII.
+fn is_sm86_proxy(p: &Path) -> bool {
+    fs::read(p).is_ok_and(|b| b.windows(10).any(|w| w == b"dlssg_sm86"))
+}
+
+/// Downloads + verifies + unpacks the newest dlssg_for_sm86 once; returns the folder holding dlssg_sm86.ini.
+fn fetch_sm86(cache: &Path) -> (String, PathBuf) {
+    let (tag, url, digest) = latest_release(SM86_REPO, "-x64.zip");
+    let pkg = cache.join(format!("dlssg_for_sm86-{tag}"));
+    if !pkg.join(".ok").exists() {
+        let _ = fs::remove_dir_all(&pkg);
+        fs::create_dir_all(&pkg).unwrap_or_else(|e| fail(&e.to_string()));
+        let zip = pkg.join("release.zip");
+        kdialog(&["--passivepopup", &t(&format!("Lade dlssg_for_sm86 {tag} …"), &format!("Downloading dlssg_for_sm86 {tag} …")), "5"]);
+        if !run(Command::new("curl").args(["-fsSL", "-o"]).arg(&zip).arg(&url)) {
+            fail(&t(&format!("Download von dlssg_for_sm86 {tag} fehlgeschlagen."), &format!("Download of dlssg_for_sm86 {tag} failed.")));
+        }
+        if let Some(d) = digest {
+            if sha256(&zip).as_deref() != Some(d.as_str()) {
+                let _ = fs::remove_dir_all(&pkg);
+                fail(&t(&format!("Prüfsumme von dlssg_for_sm86 {tag} stimmt nicht."), &format!("Checksum of dlssg_for_sm86 {tag} does not match.")));
+            }
+        }
+        let unpacked = run(Command::new("unzip").args(["-q", "-o"]).arg(&zip).arg("-d").arg(&pkg))
+            || run(Command::new("bsdtar").arg("-xf").arg(&zip).arg("-C").arg(&pkg));
+        if !unpacked {
+            fail(&t("Entpacken fehlgeschlagen (unzip oder bsdtar nötig).", "Extraction failed (needs unzip or bsdtar)."));
+        }
+        let _ = fs::remove_file(&zip);
+        fs::write(pkg.join(".ok"), "").unwrap_or_else(|e| fail(&e.to_string()));
+    }
+    let root = find_file(&pkg, "dlssg_sm86.ini").and_then(|p| p.parent().map(Path::to_path_buf));
+    (tag.clone(), root.unwrap_or_else(|| fail(&format!("dlssg_for_sm86 {tag}: no dlssg_sm86.ini"))))
+}
+
+/// The mod loaded as ASI plugin (e.g. 00_dlssg_sm86.asi next to an ASI loader), if present: updated in place.
+fn sm86_asi(dir: &Path) -> Option<PathBuf> {
+    fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).find(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("asi")) && is_sm86_proxy(p))
+}
+
+/// Which proxy name to use in `dir`: the first name that is free or already ours; None if all are taken.
+fn pick_proxy(dir: &Path) -> Option<&'static str> {
+    PROXIES.into_iter().find(|n| {
+        let p = dir.join(format!("{n}.dll"));
+        !p.exists() || is_sm86_proxy(&p)
+    })
+}
+
+/// Copies the mod into `dir` (upgrade-safe: removes old proxies of the mod, keeps the old INI as .bak).
+/// `proxy` is a DLL name from PROXIES, or the file name of an existing ASI of the mod.
+fn place_sm86(src: &Path, dir: &Path, proxy: &str) -> io::Result<()> {
+    for n in PROXIES {
+        let p = dir.join(format!("{n}.dll"));
+        if p.exists() && is_sm86_proxy(&p) {
+            fs::remove_file(&p)?;
+        }
+    }
+    let ini = dir.join("dlssg_sm86.ini");
+    if ini.exists() {
+        fs::rename(&ini, dir.join("dlssg_sm86.ini.bak"))?;
+    }
+    let payload = dir.join("dlssg_sm86");
+    if payload.exists() {
+        fs::remove_dir_all(&payload)?;
+    }
+    let (proxy_src, proxy_dst) = match proxy {
+        p if p.ends_with(".asi") => (src.join("version.dll"), dir.join(p)),
+        "version" => (src.join("version.dll"), dir.join("version.dll")),
+        p => (src.join("alternatives").join(format!("{p}.dll")), dir.join(format!("{p}.dll"))),
+    };
+    fs::copy(&proxy_src, &proxy_dst)?;
+    fs::copy(src.join("dlssg_sm86.ini"), &ini)?;
+    if !run(Command::new("cp").args(["-a", "--reflink=auto"]).arg(src.join("dlssg_sm86")).arg(dir)) {
+        return Err(io::Error::other("cp dlssg_sm86 failed"));
+    }
+    Ok(())
+}
+
+fn install_sm86(steam: &Path, cache: &Path) {
+    let games = fg_games(steam);
+    if games.is_empty() {
+        fail(&t("Kein installiertes Steam-Spiel mit DLSS Frame Generation gefunden.", "No installed Steam game with DLSS Frame Generation found."));
+    }
+    let mut items: Vec<String> = Vec::new();
+    for (i, (id, name, _)) in games.iter().enumerate() {
+        items.extend([i.to_string(), format!("{name} ({id})"), "off".into()]);
+    }
+    items.extend(["exe".into(), t("EXE selbst auswählen …", "Choose an EXE myself …"), "off".into()]);
+    let q = t("In welches Spiel soll dlssg_for_sm86 (neu oder Update)?", "Which game should get dlssg_for_sm86 (new or update)?");
+    let mut args = vec!["--radiolist", q.as_str()];
+    args.extend(items.iter().map(String::as_str));
+    let Some(choice) = kdialog(&args) else { return };
+
+    let exe = match choice.parse::<usize>().ok().and_then(|i| games.get(i)) {
+        Some((_, name, gdir)) => {
+            let Some(found) = main_exe(gdir) else { return install_next_to(pick_exe(gdir), cache) };
+            let q = t(&format!("{name}\n\nGefundene Spiel-EXE:\n{}\n\nDaneben installieren?", found.display()), &format!("{name}\n\nGame EXE found:\n{}\n\nInstall next to it?", found.display()));
+            let (yes, no) = (t("Installieren", "Install"), t("Andere EXE …", "Other EXE …"));
+            match Command::new("kdialog").args(["--title", TITLE, "--yes-label", &yes, "--no-label", &no, "--yesnocancel", &q]).status().ok().and_then(|s| s.code()) {
+                Some(0) => Some(found),
+                Some(1) => pick_exe(found.parent().unwrap_or(gdir)),
+                _ => return,
+            }
+        }
+        None if choice == "exe" => pick_exe(&steam.join("steamapps/common")),
+        None => return,
+    };
+    install_next_to(exe, cache);
+}
+
+/// Installs or updates dlssg_for_sm86 next to `exe`.
+fn install_next_to(exe: Option<PathBuf>, cache: &Path) {
+    let Some(exe) = exe else { return };
+    let Some(dir) = exe.parent().map(Path::to_path_buf) else { return };
+    let name = exe.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+    let asi = sm86_asi(&dir).map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string());
+    let proxy: String = match asi {
+        Some(a) => a,
+        None => pick_proxy(&dir).unwrap_or_else(|| fail(&t("version.dll, winmm.dll, dbghelp.dll und dinput8.dll sind dort schon von anderen Mods belegt.", "version.dll, winmm.dll, dbghelp.dll and dinput8.dll are already taken by other mods there."))).to_string(),
+    };
+    let (tag, src) = fetch_sm86(cache);
+    if let Err(e) = place_sm86(&src, &dir, &proxy) {
+        fail(&format!("{}\n{e}", t("Installation fehlgeschlagen:", "Installation failed:")));
+    }
+
+    // an ASI is loaded by the game's ASI loader, which needs its own override already
+    let opts = if proxy.ends_with(".asi") { format!("{LAUNCH_SM86} %command%") } else { format!("{LAUNCH_SM86} WINEDLLOVERRIDES=\"{proxy}=n,b\" %command%") };
+    let shown_proxy = if proxy.ends_with(".asi") { proxy.clone() } else { format!("{proxy}.dll") };
+    let bak = if dir.join("dlssg_sm86.ini.bak").exists() { t("\n\nDie alte dlssg_sm86.ini liegt als dlssg_sm86.ini.bak daneben.", "\n\nThe old dlssg_sm86.ini was kept as dlssg_sm86.ini.bak.") } else { String::new() };
+    let done = t(
+        &format!("Fertig: dlssg_for_sm86 {tag} ({shown_proxy}) in {name}\n\n1. Im Spiel unter Kompatibilität eine dlssg-open-Proton-Kopie wählen\n2. Launch-Optionen (vorhandene wie mangohud davor lassen):\n{opts}\n\nKein DXVK_NVAPI_GPU_ARCH=AD100 dazu.{bak}"),
+        &format!("Done: dlssg_for_sm86 {tag} ({shown_proxy}) in {name}\n\n1. Select a dlssg-open Proton copy under Compatibility in the game's properties\n2. Launch options (keep existing ones like mangohud in front):\n{opts}\n\nDo not add DXVK_NVAPI_GPU_ARCH=AD100.{bak}"),
+    );
+    kdialog(&["--msgbox", &done]);
+}
+
+#[cfg(test)]
+mod sm86_tests {
+    use super::*;
+
+    #[test]
+    fn proxy_choice_skips_foreign_dlls_and_reuses_ours() {
+        let d = env::temp_dir().join(format!("dlssg-open-proton-proxy-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        fs::create_dir_all(&d).unwrap();
+        assert_eq!(pick_proxy(&d), Some("version"));
+        fs::write(d.join("version.dll"), "some other mod").unwrap();
+        assert_eq!(pick_proxy(&d), Some("winmm"));
+        fs::write(d.join("winmm.dll"), "xx dlssg_sm86\\backend xx").unwrap();
+        assert_eq!(pick_proxy(&d), Some("winmm"));
+        for n in ["winmm", "dbghelp", "dinput8"] {
+            fs::write(d.join(format!("{n}.dll")), "foreign").unwrap();
+        }
+        assert_eq!(pick_proxy(&d), None);
+        assert_eq!(sm86_asi(&d), None);
+        fs::write(d.join("CrimsonRoute.asi"), "foreign").unwrap();
+        fs::write(d.join("00_dlssg_sm86.asi"), "xx dlssg_sm86\\backend xx").unwrap();
+        assert_eq!(sm86_asi(&d), Some(d.join("00_dlssg_sm86.asi")));
+        fs::remove_dir_all(&d).unwrap();
+    }
+
+    #[test]
+    fn vdf_value_reads_quoted_pairs() {
+        let acf = "\"AppState\"\n{\n\t\"appid\"\t\t\"2183900\"\n\t\"name\"\t\t\"Space Marine 2\"\n\t\"installdir\"\t\t\"Space Marine 2\"\n}";
+        assert_eq!(vdf_value(acf, "name").as_deref(), Some("Space Marine 2"));
+        assert_eq!(vdf_value(acf, "installdir").as_deref(), Some("Space Marine 2"));
+        assert_eq!(vdf_value(acf, "missing"), None);
     }
 }
