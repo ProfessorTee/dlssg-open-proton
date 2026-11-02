@@ -34,7 +34,15 @@ fn t(de: &str, en: &str) -> String {
 }
 
 fn kdialog(args: &[&str]) -> Option<String> {
-    let out = Command::new("kdialog").arg("--title").arg(TITLE).args(args).output().ok()?;
+    let mut cmd = Command::new("kdialog");
+    cmd.arg("--title").arg(TITLE);
+    // lists open too narrow by default and cut long entries off
+    match args.first() {
+        Some(&"--menu") => { cmd.args(["--geometry", "560x220"]); }
+        Some(&"--radiolist") => { cmd.args(["--geometry", "640x420"]); }
+        _ => {}
+    }
+    let out = cmd.args(args).output().ok()?;
     out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 

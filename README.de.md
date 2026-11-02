@@ -14,6 +14,12 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
 > [dniminenn/dlssg-open#1](https://github.com/dniminenn/dlssg-open/pull/1). Sobald der veröffentlicht ist,
 > wechselt das Tool zurück auf upstream.
 
+<p align="center">
+  <img src="screenshots/de-1-menu.png" alt="Startmenü" width="32%">
+  <img src="screenshots/de-2-games.png" alt="Spielliste" width="32%">
+  <img src="screenshots/de-4-done.png" alt="Fertig-Dialog mit Startoptionen" width="32%">
+</p>
+
 ## Bedienung
 
 1. Im Startmenü **dlssg-open Proton erstellen** öffnen (oder `dlssg-open-proton` im Terminal) und
