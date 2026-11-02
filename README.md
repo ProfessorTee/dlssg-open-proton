@@ -8,8 +8,8 @@ running on RTX 30 cards (Ampere) on Linux. The original Proton build stays untou
 as a separate compatibility tool, e.g. "GE-Proton11-11 (dlssg-open v0.1.1)". So only the games you switch
 to the copy get the mod.
 
-> **Currently uses the fork [ProfessorTee/dlssg-open](https://github.com/ProfessorTee/dlssg-open)**: dlssg-open
-> 0.1.0 plus the CUDA module API (`CreateCuModule` / `CreateCuFunction` / `LaunchCuKernelChain`) that
+> **Currently uses the fork [ProfessorTee/dlssg-open](https://github.com/ProfessorTee/dlssg-open)**, release
+> 0.1.1: upstream dlssg-open 0.1.0 plus the CUDA module API (`CreateCuModule` / `CreateCuFunction` / `LaunchCuKernelChain`) that
 > [dlssg_for_sm86](https://github.com/sdli1995/dlssg_for_sm86) 0.4.x needs. Upstream PR:
 > [dniminenn/dlssg-open#1](https://github.com/dniminenn/dlssg-open/pull/1). The tool switches back to upstream once
 > that is released.
