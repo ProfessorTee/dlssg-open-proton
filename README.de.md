@@ -5,8 +5,14 @@
 **Kleines KDE-Tool, das eine installierte Proton-Version kopiert und in die Kopie
 [dlssg-open](https://github.com/dniminenn/dlssg-open) einbaut.** Damit läuft DLSS Frame Generation
 auf RTX-30-Karten (Ampere) unter Linux. Die Original-Proton-Version bleibt unverändert, Steam zeigt die
-Kopie als eigenes Kompatibilitätstool an, z. B. „GE-Proton11-11 (dlssg-open v0.1.0)“. So bekommen nur
+Kopie als eigenes Kompatibilitätstool an, z. B. „GE-Proton11-11 (dlssg-open v0.1.1)“. So bekommen nur
 die Spiele den Mod, bei denen du die Kopie auswählst.
+
+> **Nutzt derzeit den Fork [ProfessorTee/dlssg-open](https://github.com/ProfessorTee/dlssg-open)**: dlssg-open
+> 0.1.0 plus die CUDA-Module-API (`CreateCuModule` / `CreateCuFunction` / `LaunchCuKernelChain`), die
+> [dlssg_for_sm86](https://github.com/sdli1995/dlssg_for_sm86) 0.4.x braucht. Upstream-PR:
+> [dniminenn/dlssg-open#1](https://github.com/dniminenn/dlssg-open/pull/1). Sobald der veröffentlicht ist,
+> wechselt das Tool zurück auf upstream.
 
 ## Bedienung
 
@@ -18,6 +24,16 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
    ```
    DXVK_NVAPI_GPU_ARCH=AD100 NVCUDA_LITE_CC=8.9 DXVK_NVAPI_CUBIN_RETARGET_SM=86 %command%
    ```
+
+   Mit **dlssg_for_sm86** (der Mod von sdli1995: `version.dll`, `dlssg_sm86.ini` und `dlssg_sm86\` im
+   Spielordner) stattdessen das hier, ohne Architektur-Spoof (das macht der Mod, und nur so gibt es 3X / 4X):
+
+   ```
+   NVCUDA_LITE_CC=8.6 DXVK_NVAPI_CUBIN_RETARGET_SM=86 PROTON_ENABLE_NVAPI=1 %command%
+   ```
+
+   Hat das Spiel schon eine eigene `version.dll`, zusätzlich `WINEDLLOVERRIDES="version=n,b"` setzen oder
+   einen der Proxys aus `alternatives\` des Mods nehmen.
 
    `PROTON_NVIDIA_LIBS` und `PROTON_NVIDIA_NVCUDA` **nicht** setzen, sonst wird das echte nvcuda
    statt nvcuda-lite geladen.
@@ -41,7 +57,10 @@ Kommt ein neues dlssg-open- oder Proton-Release, das Tool einfach nochmal ausfü
 
 - Steam (nativ, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `python3`
 - RTX 30 und ein Spiel mit DLSS-G-Runtime 310.x – Details und Grenzen im
-  [dlssg-open-README](https://github.com/dniminenn/dlssg-open#readme)
+  [dlssg-open-README](https://github.com/ProfessorTee/dlssg-open/tree/cu-module-api#readme)
+- dlssg_for_sm86 0.4.x braucht dlssg-open 0.1.1 (den Fork oben); mit 0.1.0 scheitert Frame Generation
+  oder läuft auf NVIDIAs Original-Kernels statt denen des Mods. Getestet: 0.4.1 in Monster Hunter Wilds
+  und Crimson Desert, RTX 3090, 4X.
 
 ## Installation
 
@@ -56,5 +75,5 @@ Deinstallieren: `~/.local/bin/dlssg-open-proton` und
 
 ## Lizenz
 
-MIT. dlssg-open selbst ist ein eigenes Projekt von dniminenn (ebenfalls MIT) und wird zur Laufzeit von
-dessen GitHub-Releases geladen, nicht mit diesem Repo verteilt.
+MIT. dlssg-open selbst ist ein eigenes Projekt von dniminenn (ebenfalls MIT); das Tool lädt es zur Laufzeit
+von den GitHub-Releases des Forks, es wird nicht mit diesem Repo verteilt.

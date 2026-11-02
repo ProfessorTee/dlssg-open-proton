@@ -6,9 +6,13 @@ set -euo pipefail
 STEAM="$HOME/.local/share/Steam"
 DEST="$STEAM/compatibilitytools.d"
 CACHE="$HOME/.cache/dlssg-open"
-REPO="dniminenn/dlssg-open"
+# Fork of dniminenn/dlssg-open with the CUDA module API needed by dlssg_for_sm86 0.4.x
+# (upstream PR: https://github.com/dniminenn/dlssg-open/pull/1). Back to upstream once that is released.
+REPO="ProfessorTee/dlssg-open"
 TITLE="dlssg-open Proton"
 LAUNCH="DXVK_NVAPI_GPU_ARCH=AD100 NVCUDA_LITE_CC=8.9 DXVK_NVAPI_CUBIN_RETARGET_SM=86"
+# With dlssg_for_sm86 (sdli1995) in the game folder: no arch spoof, the mod handles that
+LAUNCH_SM86="NVCUDA_LITE_CC=8.6 DXVK_NVAPI_CUBIN_RETARGET_SM=86 PROTON_ENABLE_NVAPI=1"
 
 [[ "${1:-}" == --folder ]] && exec xdg-open "$DEST"
 
@@ -31,7 +35,7 @@ src=$(kdialog --title "$TITLE" --radiolist "$(t "Welche Proton-Version soll den 
 
 # Newest release of the mod
 rel=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest") || fail "$(t "GitHub nicht erreichbar." "GitHub not reachable.")"
-read -r tag url < <(python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(d["tag_name"], d["assets"][0]["browser_download_url"])' <<<"$rel")
+read -r tag url < <(python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(d["tag_name"], next(a["browser_download_url"] for a in d["assets"] if a["name"].endswith(".tar.gz")))' <<<"$rel")
 pkg="$CACHE/$tag"
 if [[ ! -f "$pkg/.ok" ]]; then
     rm -rf "$pkg"; mkdir -p "$pkg"
@@ -79,6 +83,9 @@ done_de="Fertig: $(basename "$src") (dlssg-open $tag)
 3. In die Launch-Optionen vor %command%:
 $LAUNCH
 
+Mit dlssg_for_sm86 (version.dll im Spielordner) stattdessen:
+$LAUNCH_SM86
+
 Nicht dazu: PROTON_NVIDIA_LIBS / PROTON_NVIDIA_NVCUDA"
 done_en="Done: $(basename "$src") (dlssg-open $tag)
 
@@ -86,6 +93,9 @@ done_en="Done: $(basename "$src") (dlssg-open $tag)
 2. Select the new build under Compatibility in the game's properties
 3. Put this in the launch options before %command%:
 $LAUNCH
+
+With dlssg_for_sm86 (version.dll in the game folder) instead:
+$LAUNCH_SM86
 
 Do not add: PROTON_NVIDIA_LIBS / PROTON_NVIDIA_NVCUDA"
 kdialog --title "$TITLE" --yes-label "$(t "Proton-Ordner öffnen" "Open Proton folder")" --no-label "$(t "Schließen" "Close")" \
