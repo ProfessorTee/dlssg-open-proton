@@ -14,11 +14,9 @@ to the copy get the mod.
 > [dniminenn/dlssg-open#1](https://github.com/dniminenn/dlssg-open/pull/1). The tool switches back to upstream once
 > that is released.
 
-<p align="center">
-  <img src="screenshots/en-1-menu.png" alt="Start menu" width="32%">
-  <img src="screenshots/en-2-games.png" alt="Game list" width="32%">
-  <img src="screenshots/en-4-done.png" alt="Done dialog with launch options" width="32%">
-</p>
+<p align="center"><img src="screenshots/en-1-menu.png" alt="Start menu"></p>
+<p align="center"><img src="screenshots/en-2-games.png" alt="Game list"></p>
+<p align="center"><img src="screenshots/en-4-done.png" alt="Done dialog with launch options"></p>
 
 ## Usage
 
