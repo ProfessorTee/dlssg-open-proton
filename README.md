@@ -41,21 +41,23 @@ to the copy get the mod.
 Right-click the start menu entry → *Open Proton folder* opens `compatibilitytools.d` so you can delete old
 copies. The interface follows the system language: German on German systems, English otherwise.
 
-## What the script does
+## What the tool does
 
 - Lists every installed Proton build with dxvk-nvapi (Steam's Proton, system-wide ones and your own in
   `compatibilitytools.d`), excluding its own dlssg-open copies.
 - Downloads the **newest release** of dlssg-open via the GitHub API, checks its `SHA256SUMS` and keeps it in
   `~/.cache/dlssg-open/<tag>`.
 - Copies the chosen Proton build to `compatibilitytools.d/<name>-dlssg-open-<tag>` (with `--reflink`, so on
-  btrfs it takes almost no space), writes its own `compatibilitytool.vdf` and runs the dlssg-open installer on
-  the copy. If that fails, the copy is deleted again.
+  btrfs it takes almost no space), writes its own `compatibilitytool.vdf` and puts dlssg-open's `nvapi64.dll` and
+  `nvcuda.dll` into the copy (Proton's originals stay next to them as `.proton-orig` / `.proton-stub`, the same
+  as dlssg-open's `install.py --proton` does). If that fails, the copy is deleted again.
 
 When a new dlssg-open or Proton release comes out, just run the tool again.
 
 ## Requirements
 
-- Steam (native, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `python3`
+- Steam (native, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `tar`, `sha256sum`; no Python (since 2.0
+  the tool is a single Rust binary)
 - RTX 30 and a game with DLSS-G runtime 310.x – details and limits in the
   [dlssg-open README](https://github.com/ProfessorTee/dlssg-open/tree/cu-module-api#readme)
 - dlssg_for_sm86 0.4.x needs dlssg-open 0.1.1 (the fork above); with 0.1.0 frame generation fails or
@@ -69,6 +71,9 @@ git clone https://github.com/ProfessorTee/dlssg-open-proton.git
 cd dlssg-open-proton
 ./install.sh
 ```
+
+`install.sh` builds the tool when Rust (`cargo`) is installed, otherwise it downloads the prebuilt binary of
+the latest release (x86_64, glibc ≥ 2.35).
 
 Uninstall: delete `~/.local/bin/dlssg-open-proton` and
 `~/.local/share/applications/dlssg-open-proton.desktop`.

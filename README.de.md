@@ -41,7 +41,7 @@ die Spiele den Mod, bei denen du die Kopie auswählst.
 Rechtsklick auf den Startmenü-Eintrag → *Proton-Ordner öffnen* zeigt `compatibilitytools.d`, um alte
 Kopien zu löschen. Die Oberfläche folgt der Systemsprache: Deutsch auf deutschen Systemen, sonst Englisch.
 
-## Was das Skript macht
+## Was das Tool macht
 
 - Listet alle installierten Proton-Builds mit dxvk-nvapi (Steam-Proton, systemweite und eigene in
   `compatibilitytools.d`), eigene dlssg-open-Kopien ausgenommen.
@@ -49,13 +49,16 @@ Kopien zu löschen. Die Oberfläche folgt der Systemsprache: Deutsch auf deutsch
   speichert es in `~/.cache/dlssg-open/<tag>`.
 - Kopiert die gewählte Proton-Version nach `compatibilitytools.d/<name>-dlssg-open-<tag>`
   (mit `--reflink`, auf btrfs also fast ohne Platz), legt eine eigene `compatibilitytool.vdf` an und
-  führt den Installer von dlssg-open auf der Kopie aus. Schlägt das fehl, wird die Kopie wieder gelöscht.
+  legt `nvapi64.dll` und `nvcuda.dll` von dlssg-open in die Kopie (Protons Originale bleiben daneben als
+  `.proton-orig` / `.proton-stub`, wie bei `install.py --proton` von dlssg-open). Schlägt das fehl, wird die
+  Kopie wieder gelöscht.
 
 Kommt ein neues dlssg-open- oder Proton-Release, das Tool einfach nochmal ausführen.
 
 ## Voraussetzungen
 
-- Steam (nativ, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `python3`
+- Steam (nativ, `~/.local/share/Steam`), KDE (`kdialog`), `curl`, `tar`, `sha256sum`; kein Python (seit 2.0
+  ist das Tool ein einzelnes Rust-Binary)
 - RTX 30 und ein Spiel mit DLSS-G-Runtime 310.x – Details und Grenzen im
   [dlssg-open-README](https://github.com/ProfessorTee/dlssg-open/tree/cu-module-api#readme)
 - dlssg_for_sm86 0.4.x braucht dlssg-open 0.1.1 (den Fork oben); mit 0.1.0 scheitert Frame Generation
@@ -69,6 +72,9 @@ git clone https://github.com/ProfessorTee/dlssg-open-proton.git
 cd dlssg-open-proton
 ./install.sh
 ```
+
+`install.sh` baut das Tool, wenn Rust (`cargo`) installiert ist, sonst lädt es das fertige Binary aus dem
+neuesten Release (x86_64, glibc ≥ 2.35).
 
 Deinstallieren: `~/.local/bin/dlssg-open-proton` und
 `~/.local/share/applications/dlssg-open-proton.desktop` löschen.
