@@ -1,6 +1,6 @@
 [package]
 name = "dlssg-open-proton"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 license = "MIT"
 description = "KDE tool: copy a Proton build and install dlssg-open (DLSS Frame Generation on RTX 30) into the copy"
